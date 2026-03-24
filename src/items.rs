@@ -2572,6 +2572,12 @@ fn rewrite_fn_base(
         result.push_str(&indent.to_string_with_newline(context.config));
         result.push(')');
     } else {
+        if fd.inputs.is_empty()
+            && param_str.contains("//")
+            && context.config.style_edition() >= StyleEdition::Edition2024
+        {
+            result.push_str(&param_indent.to_string_with_newline(context.config));
+        }
         result.push_str(&param_str);
         let used_width = last_line_used_width(&result, indent.width()) + first_line_width(&ret_str);
         // Put the closing brace on the next line if it overflows the max width.
@@ -2586,13 +2592,15 @@ fn rewrite_fn_base(
             .map_or(false, |last_line| last_line.contains("//"));
 
         if context.config.style_edition() >= StyleEdition::Edition2024 {
-            if closing_paren_overflow_max_width {
-                result.push(')');
+            if params_last_line_contains_comment {
+                // A `//` comment consumes the rest of the line, so `)` must go on
+                // the next line regardless of whether the line also overflows max width.
                 result.push_str(&indent.to_string_with_newline(context.config));
+                result.push(')');
                 no_params_and_over_max_width = true;
-            } else if params_last_line_contains_comment {
-                result.push_str(&indent.to_string_with_newline(context.config));
+            } else if closing_paren_overflow_max_width {
                 result.push(')');
+                result.push_str(&indent.to_string_with_newline(context.config));
                 no_params_and_over_max_width = true;
             } else {
                 result.push(')');
